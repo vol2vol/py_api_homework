@@ -2,35 +2,30 @@ import requests
 from bs4 import BeautifulSoup
 import sqlite3
 
-def parser(url:str):
-    response = requests.get(url=url)
+def parse_and_store_data(url: str) -> None:
+    response = requests.get(url)
     html = response.text
     soup = BeautifulSoup(html, "lxml")
     products = soup.find_all("div", class_="ty-column5")
     
-    urls = []
-    for product in products:
-        name_elem = product.find("a", class_="product-title")
-        link = name_elem.get("href")
-        urls.append(link)
+    urls = [product.find("a", class_="product-title").get("href") for product in products]
     
-    args = []
+    data = []
     for url in urls:
-        response = requests.get(url=url)
+        response = requests.get(url)
         html = response.text
         soup = BeautifulSoup(html, "lxml")
         name = soup.select_one("h1").text
-        #price = soup.select_one("span.ty-product-block__price-actual").get('content')
         description =  soup.select_one("div.ty-product-block__description").text
-        args.append((name, description))
+        data.append((name, description))
 
     conn = sqlite3.connect("mydata.db")
 
     cursor = conn.cursor()
 
-    cursor.executemany("INSERT INTO blocks VALUES (?,?)", args)
+    cursor.executemany("INSERT INTO blocks VALUES (?, ?)", data)
     conn.commit()
     conn.close()
 
 if __name__ == "__main__":
-    parser(url="https://fabrika-betonov.ru/catalog/")
+    parse_and_store_data(url="https://fabrika-betonov.ru/catalog/")
